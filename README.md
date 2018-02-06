@@ -1,0 +1,2 @@
+# QAGitHub
+Class Example
