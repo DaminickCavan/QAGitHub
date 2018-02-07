@@ -1,0 +1,377 @@
+       identification division.
+       program-id. CBLDSC05.
+       AUTHOR.     DAMINICK CAVAN
+       DATE-WRITTEN. 1/30/2018
+
+      **************************************************************** ** 
+      * RENTAL EVALUATIONS, IF AND A LOT OF CALCULATIONS.
+      ******************************************************************
+       environment division.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT CBL5
+               ASSIGN TO 'D:\COBOL\CBLDSC05\CP5DATA.DAT'
+                   ORGANIZATION IS LINE SEQUENTIAL.
+           SELECT PRTOUT
+               ASSIGN TO 'D:\COBOL\CBLDSC05\CBL5PRTOUT.PRT'
+                   ORGANIZATION IS RECORD SEQUENTIAL.
+       data division.
+       FILE SECTION.
+       
+       FD CBL5
+           LABEL RECORD IS STANDARD
+           DATA RECORD IS I-REC
+           RECORD CONTAINS 24 CHARACTERS.
+           01  I-REC.
+           05  I-BLD-CODE              PIC XX.
+               88 R7YTPP
+                   VALUE 'R7','YT','PP'.
+               88 BPCT
+                   VALUE 'BP', 'CT'.
+           05  I-UNIT                  PIC 99.
+               88 UNIT-1-8
+                   VALUE 1 THRU 8.
+               88 UNIT-9-16 
+                   VALUE 9 THRU 16.
+               88 UNIT-17-25
+                   VALUE 17 THRU 25.
+               88 UNIT-2325
+                   VALUE 23, 25.
+           05  I-TENANTS               PIC 9.
+           05  I-ELECTRIC              PIC 999V99.
+           05  I-GAS                   PIC 999V99.
+           05  I-WATER                 PIC 999V99.
+           05  I-GARBAGE               PIC 99V99.
+
+       FD PRTOUT
+           LABEL RECORD IS OMITTED
+           RECORD CONTAINS 132 CHARACTERS
+           DATA RECORD IS PRTLINE
+           LINAGE IS 60 WITH FOOTING AT 56.
+           01  PRTLINE                 PIC X(132).
+
+
+       working-storage section.
+       01 MISC.
+           05  EOF                     PIC X       VALUE 'F'.
+           05  CURRENT-DATE-AND-TIME.
+               10  CURRENT-YEAR        PIC X(4).
+               10  CURRENT-MONTH       PIC XX.
+               10  CURRENT-DAY         PIC XX.
+           05  C-PCTR                  PIC 99     VALUE 0.
+           05  C-PREMIUM-CTR           PIC 99     VALUE 0.
+           05  C-DISCOUNT-CTR          PIC 99     VALUE 0.
+           05  C-BASE-RATE             PIC 999.
+           05  C-TENANT-CHARGE         PIC 99V99.
+           05  C-PREMIUM-AMT           PIC S9(5)V99.
+           05  C-DISCOUNT-AMT          PIC 9(5)V99.
+           05  C-SUBTOTAL              PIC 9(5)V99.
+           05  C-TOTAL-UTILITIES       PIC 9(5)V99.
+           05  C-RENT                  PIC 9(5)V99.
+           05  C-GT-BASE-RATE          PIC 9(6)V99 VALUE 0.
+           05  C-GT-TENANT-CHARGE      PIC 9(6)V99 VALUE 0.
+           05  C-GT-PREMIUM-AMT        PIC S9(5)V99 VALUE 0.
+           05  C-GT-SUBTOTAL           PIC 9(7)V99 VALUE 0.
+           05  C-GT-UTILITIES          PIC 9(7)V99 VALUE 0.
+           05  C-GT-RENT               PIC 9(7)V99 VALUE 0.
+       01  HEADING1.
+           05  FILLER                  PIC X(6)    VALUE 'DATE: '.
+           05  H1-DATE.
+               10  H1-MONTH            PIC 99.
+               10  FILLER              PIC X       VALUE '/'.
+               10  H1-DAY              PIC 99.
+               10  FILLER              PIC X       VALUE '/'.
+               10  H1-YEAR             PIC 9(4).
+           05  FILLER                  PIC X(42)   VALUE SPACES.
+           05  FILLER                  PIC X(15)
+                   VALUE 'FURLY''S RENTALS'.
+           05  FILLER                  PIC X(51)   VALUE SPACES.
+           05  FILLER                  PIC X(6)    VALUE 'PAGE: '.
+           05  O-PCTR                  PIC Z9.
+       01  COMPANY-TITLE.
+           05  FILLER                  PIC X(8)    VALUE 'CBLDSC05'.
+           05  FILLER                  PIC X(45)   VALUE SPACES.
+           05  FILLER                  PIC X(25)
+                   VALUE 'BILLABLE RENT - DAMINICK'.
+       01 DETAIL-HEADING1.
+           05  FILLER                  PIC X(23)   VALUE SPACES.
+           05  FILLER                  PIC X(4)    VALUE 'BASE'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(6)    VALUE 'TENANT'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(6)    VALUE 'TENANT'.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  FILLER                  PIC X(8)    VALUE 'PREMIUM/'.
+           05  FILLER                  PIC X(53)   VALUE SPACES.
+           05  FILLER                  PIC X(5)    VALUE 'TOTAL'.
+       01 DETAIL-HEADING2.
+           05  FILLER                  PIC X(15)
+                   VALUE 'RENTAL BUILDING'.
+           05  FILLER                  PIC X      VALUE SPACES.
+           05  FILLER                  PIC X(4)    VALUE 'UNIT'.
+           05  FILLER                  PIC X(3)    VALUE SPACES.
+           05  FILLER                  PIC X(4)    VALUE 'RENT'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(6)    VALUE 'NUMBER'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(6)    VALUE 'CHARGE'.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  FILLER                  PIC X(8)    VALUE 'DISCOUNT'.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  FILLER                  PIC X(8)    VALUE 'SUBTOTAL'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(8)    VALUE 'ELECTRIC'.
+           05  FILLER                  PIC X(4)    VALUE SPACES.
+           05  FILLER                  PIC X(3)    VALUE 'GAS'.
+           05  FILLER                  PIC X(4)    VALUE SPACES.
+           05  FILLER                  PIC X(5)    VALUE 'WATER'.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  FILLER                  PIC X(7)    VALUE 'GARBAGE'.
+           05  FILLER                  PIC X(3)    VALUE SPACES.
+           05  FILLER                  PIC X(9)    VALUE 'UTILITIES'.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  FILLER                  PIC X(8)    VALUE 'RENT DUE'.
+       01  DETAIL-LINE.
+           05  O-BLD-CODE              PIC X(15).
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-UNIT                  PIC Z9.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-BASE-RATE             PIC $(4).99.
+           05  FILLER                  PIC X(3)    VALUE SPACES.
+           05  O-TENANTS               PIC 9.
+           05  FILLER                  PIC X(4)    VALUE SPACES.
+           05  O-TENANT-CHARGE         PIC $(4).99.
+           05  FILLER                  PIC X(4)    VALUE SPACES.
+           05  O-PREMIUM-AMT           PIC $$,$$$.99+.
+           05  FILLER                  PIC X(3)    VALUE SPACES.
+           05  O-SUBTOTAL              PIC $$,$$$.99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-ELECTRIC              PIC $(4).99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-GAS                   PIC $(4).99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-WATER                 PIC $(4).99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-GARBAGE               PIC $$$.99.
+           05  FILLER                  PIC X(3)    VALUE SPACES.
+           05  O-TOTAL-UTILITIES       PIC $$,$$$.99.
+           05  FILLER                  PIC X(4)    VALUE SPACES.
+           05  O-RENT                  PIC $$,$$$.99.
+           05  O-FLAG                  PIC X(3).
+       01  GRAND-TOTALS.
+           05  FILLER                  PIC X(13)
+                   VALUE 'GRAND TOTALS:'.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  O-GT-BASE-RATE          PIC $$$,$$$.99.
+           05  FILLER                  PIC X(5)    VALUE SPACES.
+           05  O-GT-TENANT-CHARGE      PIC $$$,$$$.99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-GT-PREMIUM-AMT        PIC $$$$,$$$.99+.
+           05  FILLER                  PIC X       VALUE SPACES.
+           05  O-GT-SUBTOTAL           PIC $$$$,$$$.99.
+           05  FILLER                  PIC X(36)   VALUE SPACES.
+           05  O-GT-UTILITIES          PIC $$$$,$$$.99.
+           05  FILLER                  PIC XX      VALUE SPACES.
+           05  O-GT-RENT               PIC $$$$,$$$.99.
+       01  DISCOUNT-LINE.
+           05  FILLER                  PIC X(34)   VALUE SPACES.
+           05  FILLER                  PIC X(19)
+                   VALUE 'RENTALS DISCOUNTED '.
+           05  O-DISCOUNT-CTR          PIC ZZ9.
+       01  PREMIUM-LINE.
+           05  FILLER                  PIC X(37)   VALUE SPACES.
+           05  FILLER                  PIC X(16)
+                   VALUE 'PREMIUM RENTALS '.
+           05  O-PREMIUM-CTR           PIC ZZ9.
+       procedure division.
+       L1-MAIN.
+           PERFORM L2-INIT.
+           PERFORM L2-MAINLINE
+               UNTIL EOF = 'T'.
+           PERFORM L2-CLOSING.
+           STOP RUN.
+           
+      
+
+       L2-INIT.
+           MOVE FUNCTION CURRENT-DATE      TO CURRENT-DATE-AND-TIME.
+           MOVE CURRENT-DAY                TO H1-DAY.
+           MOVE CURRENT-MONTH              TO H1-MONTH.
+           MOVE CURRENT-YEAR               TO H1-YEAR.
+           OPEN INPUT CBL5.
+           OPEN OUTPUT PRTOUT
+           PERFORM L4-HEADINGS.
+           PERFORM L3-READ.
+       L2-MAINLINE.
+           PERFORM L3-CALCS.
+           PERFORM L3-MOVES.
+           PERFORM L3-READ.
+
+       L2-CLOSING.
+           MOVE C-GT-BASE-RATE TO O-GT-BASE-RATE.
+           MOVE C-GT-PREMIUM-AMT TO O-GT-PREMIUM-AMT.
+           MOVE C-GT-RENT TO O-GT-RENT.
+           MOVE C-GT-SUBTOTAL TO O-GT-SUBTOTAL.
+           MOVE C-GT-TENANT-CHARGE TO O-GT-TENANT-CHARGE.
+           MOVE C-GT-UTILITIES TO O-GT-UTILITIES.
+           MOVE C-PREMIUM-CTR TO O-PREMIUM-CTR.
+           MOVE C-DISCOUNT-CTR TO O-DISCOUNT-CTR.
+
+           WRITE PRTLINE FROM GRAND-TOTALS
+               AFTER ADVANCING 3 lines.
+           WRITE PRTLINE FROM DISCOUNT-LINE
+               AFTER ADVANCING 2 lines.
+           WRITE PRTLINE FROM PREMIUM-LINE
+               AFTER ADVANCING 1 line.
+           CLOSE CBL5.
+           CLOSE PRTOUT.
+
+
+       L3-CALCS.
+           MOVE 0 TO C-TENANT-CHARGE.
+           MOVE 0 TO C-PREMIUM-AMT.
+           MOVE 0 TO C-DISCOUNT-AMT.
+           EVALUATE I-BLD-CODE
+               WHEN 'AA'
+                   MOVE "PALACE PLACE" TO O-BLD-CODE
+               WHEN 'GG'
+                   MOVE "GEORGIA" TO O-BLD-CODE
+               WHEN 'PP'
+                   MOVE "PARK PLACE" TO O-BLD-CODE
+               WHEN 'IA'
+                   MOVE "IOWA CONDO" TO O-BLD-CODE
+               WHEN 'MS'
+                   MOVE "MARKET STREET" TO O-BLD-CODE
+               WHEN 'HH'
+                   MOVE "HIGH TOWER" TO O-BLD-CODE
+               WHEN 'R7'
+                   MOVE "UPTOWN CONDOS" TO O-BLD-CODE
+               WHEN 'GM'
+                   MOVE "GANDER MOUNTAIN" TO O-BLD-CODE
+               WHEN 'BP'
+                   MOVE "BENTON PLACE" TO O-BLD-CODE
+               WHEN 'GA'
+                   MOVE "GRAND AVENUE" TO O-BLD-CODE
+               WHEN 'JK'
+                   MOVE "JACK''S PLACE" TO O-BLD-CODE
+               WHEN 'UN'
+                   MOVE "UNDERGROUND SAM" TO O-BLD-CODE
+               WHEN 'YD'
+                   MOVE "YANKEE DOODLE" TO O-BLD-CODE
+               WHEN 'YT'
+                   MOVE "YAHTZEE AVE" TO O-BLD-CODE
+               WHEN 'NZ'
+                   MOVE "NEW ZOO" TO O-BLD-CODE
+               WHEN 'VV'
+                   MOVE "VERMONT" TO O-BLD-CODE
+               WHEN 'CT'
+                   MOVE "CHINA TOWN" TO O-BLD-CODE
+               WHEN 'YS'
+                   MOVE "YORKSHIRE" TO O-BLD-CODE
+               WHEN 'ME'
+                   MOVE "MAINE APT" TO O-BLD-CODE
+           END-EVALUATE.
+           EVALUATE true
+               WHEN UNIT-1-8
+                   COMPUTE C-BASE-RATE = 650
+                       IF I-TENANTS > 4
+                         COMPUTE C-TENANT-CHARGE = 83.45
+                       else
+                          IF I-TENANTS > 1
+                               COMPUTE C-TENANT-CHARGE 
+                                 = 25*(I-TENANTS - 1)
+                          END-IF
+                       END-IF
+              WHEN UNIT-9-16
+                   COMPUTE C-BASE-RATE = 700
+                       IF I-TENANTS > 4
+                         COMPUTE C-TENANT-CHARGE = 135.00
+                       else
+                          IF I-TENANTS > 1
+                               COMPUTE C-TENANT-CHARGE 
+                                 = 35.55*(I-TENANTS - 1)
+                          END-IF
+                       END-IF
+              WHEN UNIT-17-25
+                   COMPUTE C-BASE-RATE = 825
+                       IF I-TENANTS > 4
+                         COMPUTE C-TENANT-CHARGE = 185.00
+                       else
+                          IF I-TENANTS > 1
+                               COMPUTE C-TENANT-CHARGE 
+                                 = 50*(I-TENANTS - 1)
+                          END-IF
+                       END-IF
+           END-EVALUATE.
+           
+           IF R7YTPP
+               IF UNIT-2325
+                   COMPUTE C-PREMIUM-AMT ROUNDED = (C-BASE-RATE + 
+                   C-TENANT-CHARGE)*.12
+                   COMPUTE C-PREMIUM-CTR = C-PREMIUM-CTR + 1.
+                   
+           IF BPCT
+               COMPUTE C-PREMIUM-AMT ROUNDED = (C-BASE-RATE +
+                   C-TENANT-CHARGE)*-.33
+               COMPUTE C-DISCOUNT-CTR = C-DISCOUNT-CTR + 1
+           END-IF.
+           COMPUTE C-SUBTOTAL = C-BASE-RATE + C-TENANT-CHARGE + 
+           C-PREMIUM-AMT + C-PREMIUM-AMT.
+           COMPUTE C-TOTAL-UTILITIES = I-ELECTRIC + I-GARBAGE + I-GAS
+           + I-WATER.
+           COMPUTE C-RENT = C-SUBTOTAL + C-TOTAL-UTILITIES.
+           COMPUTE C-GT-BASE-RATE = C-GT-BASE-RATE + C-BASE-RATE.
+           COMPUTE C-GT-TENANT-CHARGE = C-GT-TENANT-CHARGE + 
+           C-TENANT-CHARGE.
+           COMPUTE C-GT-PREMIUM-AMT = C-GT-PREMIUM-AMT + C-PREMIUM-AMT.
+           COMPUTE C-GT-SUBTOTAL = C-GT-SUBTOTAL + C-SUBTOTAL.
+           COMPUTE C-GT-UTILITIES = C-GT-UTILITIES + C-TOTAL-UTILITIES.
+           COMPUTE C-GT-RENT = C-GT-RENT + C-RENT.
+
+           IF C-RENT > 1009
+               MOVE "***"      TO O-FLAG
+           ELSE
+               MOVE SPACES     TO O-FLAG
+           END-IF.
+        
+
+       L3-MOVES.
+           MOVE I-UNIT TO O-UNIT.
+           MOVE I-TENANTS TO O-TENANTS.
+           MOVE I-ELECTRIC TO O-ELECTRIC.
+           MOVE I-GAS TO O-GAS.
+           MOVE I-WATER TO O-WATER.
+           MOVE I-GARBAGE TO O-GARBAGE.
+           MOVE C-PREMIUM-AMT TO O-PREMIUM-AMT
+           MOVE C-SUBTOTAL TO O-SUBTOTAL.
+           MOVE C-TOTAL-UTILITIES TO O-TOTAL-UTILITIES.
+           MOVE C-RENT TO O-RENT.
+           MOVE C-TENANT-CHARGE TO O-TENANT-CHARGE
+           MOVE C-BASE-RATE TO O-BASE-RATE.
+           .
+
+           WRITE PRTLINE FROM DETAIL-LINE
+               AFTER ADVANCING 2 LINES.
+          
+
+       L3-READ.
+           READ CBL5
+               AT END
+                   MOVE 'T' TO EOF.
+
+
+       L4-HEADINGS.
+           ADD 1 TO C-PCTR.
+           MOVE C-PCTR TO O-PCTR.
+           WRITE PRTLINE FROM HEADING1
+               AFTER ADVANCING 1 LINE.
+           WRITE PRTLINE FROM COMPANY-TITLE
+               AFTER ADVANCING 1 LINE.
+           WRITE PRTLINE FROM DETAIL-HEADING1
+               AFTER ADVANCING 2 LINES.
+           WRITE PRTLINE FROM DETAIL-HEADING2
+               AFTER ADVANCING 1 LINE.
+
+
+
+       end program CBLDSC05.
